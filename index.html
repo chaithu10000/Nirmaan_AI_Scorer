@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nirmaan AI Transcript Scorer — Advanced</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configure Font -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb; /* Very light background */
+        }
+        /* Custom spinner for a more integrated look */
+        .loading-dot {
+            width: 8px;
+            height: 8px;
+            margin: 0 4px;
+            background-color: white;
+            border-radius: 50%;
+            display: inline-block;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+        .loading-dot:nth-child(1) { animation-delay: -0.32s; }
+        .loading-dot:nth-child(2) { animation-delay: -0.16s; }
+        .loading-dot:nth-child(3) { animation-delay: 0s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1.0); }
+        }
+
+        /* Progress Bar Container */
+        .progress-container {
+            height: 12px;
+            background-color: #e5e7eb;
+            border-radius: 9999px;
+            overflow: hidden;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Progress Bar Fill */
+        .progress-bar {
+            height: 100%;
+            transition: width 1s ease-out, background-color 0.5s ease;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); /* Subtle shadow for 3D effect */
+        }
+
+        /* Utility classes for dynamic colors */
+        .border-emerald-500 { border-color: #10b981; }
+        .bg-emerald-50 { background-color: #ecfdf5; }
+        .text-emerald-700 { color: #047857; }
+        .border-amber-500 { border-color: #f59e0b; }
+        .bg-amber-50 { background-color: #fffbeb; }
+        .text-amber-700 { color: #b45309; }
+        .border-red-500 { border-color: #ef4444; }
+        .bg-red-50 { background-color: #fef2f2; }
+        .text-red-700 { color: #b91c1c; }
+    </style>
+</head>
+<body class="p-4 md:p-10 min-h-screen flex items-start justify-center">
+
+    <div class="bg-white p-6 md:p-12 rounded-3xl shadow-2xl w-full max-w-6xl mt-6 md:mt-10 border border-gray-100">
+        <header class="text-center mb-12">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-gray-900">
+                <span class="text-teal-600">Nirmaan AI</span> Communication Scorer
+            </h1>
+            <p class="text-gray-500 mt-3 text-lg">Rubric-driven analysis combining Rule-Based and NLP Semantic Scoring.</p>
+        </header>
+
+        <!-- Input Area and Action -->
+        <div id="input-section" class="mb-12">
+            <label for="transcriptInput" class="block text-xl font-semibold text-gray-800 mb-3 flex items-center">
+                <svg class="w-6 h-6 mr-2 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                1. Paste Student Transcript
+            </label>
+            <textarea id="transcriptInput" rows="10" 
+                      placeholder="Start typing or paste the transcript here..."
+                      class="w-full p-5 border-2 border-gray-300 rounded-xl focus:ring-teal-500 focus:border-teal-500 transition duration-200 resize-none shadow-inner text-gray-700"
+                      ><!-- Placeholder Content for easy testing -->Hello everyone, myself Muskan, studying in class 8th B section from Christ Public School. 
+I am 13 years old. I live with my family. There are 3 people in my family, me, my mother and my father.
+One special thing about my family is that they are very kind hearted to everyone and soft spoken. One thing I really enjoy is play, playing cricket and taking wickets.
+A fun fact about me is that I see in mirror and talk by myself. One thing people don't know about me is that I once stole a toy from one of my cousin.
+My favorite subject is science because it is very interesting. Through science I can explore the whole world and make the discoveries and improve the lives of others. 
+Thank you for listening.</textarea>
+            
+            <button id="scoreButton" onclick="scoreTranscript()" 
+                    class="mt-6 w-full bg-teal-600 hover:bg-teal-700 text-white font-bold text-xl py-4 px-6 rounded-xl transition duration-300 ease-in-out shadow-lg shadow-teal-300/50 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.005]">
+                Analyze and Calculate Final Score
+                <div id="loadingIndicator" class="ml-4 flex items-center hidden">
+                    <span class="loading-dot"></span>
+                    <span class="loading-dot"></span>
+                    <span class="loading-dot"></span>
+                </div>
+            </button>
+            <p class="text-sm text-gray-400 mt-3 text-center">Note: Initial analysis may take 10-20 seconds as the Semantic NLP Model loads on the server.</p>
+        </div>
+
+        <!-- Error Message Block -->
+        <div id="error-message" class="hidden mt-4 p-5 bg-red-50 border border-red-300 text-red-700 rounded-xl transition-all duration-300 shadow-md">
+            <p class="font-bold flex items-center mb-1">
+                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                Analysis Failed
+            </p>
+            <p id="error-text" class="text-sm"></p>
+        </div>
+        
+        <!-- Results Section (Initially Hidden) -->
+        <div id="results" class="hidden mt-10 transition-all duration-500 transform opacity-0 translate-y-4">
+            <h2 class="text-3xl font-bold text-gray-800 border-b-4 border-blue-600 pb-3 mb-8 flex items-center">
+                <svg class="w-7 h-7 mr-3 text-blue-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                Detailed Score Report
+            </h2>
+            
+            <!-- Overall Score Card -->
+            <div class="grid md:grid-cols-3 gap-8 mb-10">
+                <div class="md:col-span-1 p-8 bg-blue-700 rounded-xl text-white shadow-xl flex flex-col justify-center items-center transform hover:scale-[1.02] transition duration-300">
+                    <p class="text-sm font-light uppercase tracking-widest opacity-80">Transcript Statistics</p>
+                    <div class="flex items-end mt-3 space-x-4">
+                        <p id="wordCount" class="text-4xl font-extrabold">--</p>
+                        <p class="text-lg opacity-80 mb-1">Words</p>
+                    </div>
+                </div>
+
+                <div class="md:col-span-2 p-8 bg-white rounded-xl shadow-2xl border border-blue-100">
+                    <p class="text-lg font-semibold text-gray-600 mb-3">Overall Weighted Score</p>
+                    <div class="flex justify-between items-center mb-3">
+                        <p id="overallScoreText" class="text-6xl font-extrabold text-blue-700 leading-none">
+                            <span id="overallScore" class="animate-pulse">--</span><span class="text-3xl text-gray-400"> / 100</span>
+                        </p>
+                        <span id="scoreGrade" class="text-xl font-bold px-4 py-2 rounded-full shadow-lg"></span>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="progress-container mt-4">
+                        <div id="scoreProgressBar" class="progress-bar" style="width: 0%;" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-3">Score is a weighted average of all criteria (Total Weight: 60).</p>
+                </div>
+            </div>
+
+            <h3 class="text-2xl font-semibold text-gray-800 mb-6 border-b border-gray-200 pb-2">Criterion Breakdown</h3>
+            <div id="criterionResults" class="space-y-6">
+                <!-- Detailed results will be injected here -->
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Define the base URL for the Flask app.
+        const BASE_URL = window.location.origin;
+
+        // Utility function to determine color and grade based on score (0-100)
+        function getScoreStatus(score) {
+            if (score >= 85) {
+                return { 
+                    grade: 'Excellent', 
+                    colorClass: 'bg-emerald-500', 
+                    borderClass: 'border-emerald-500', 
+                    textColor: 'text-emerald-700',
+                    bgColor: 'bg-emerald-50'
+                };
+            } else if (score >= 60) {
+                return { 
+                    grade: 'Good', 
+                    colorClass: 'bg-amber-500', 
+                    borderClass: 'border-amber-500', 
+                    textColor: 'text-amber-700',
+                    bgColor: 'bg-amber-50' 
+                };
+            } else {
+                return { 
+                    grade: 'Needs Improvement', 
+                    colorClass: 'bg-red-500', 
+                    borderClass: 'border-red-500', 
+                    textColor: 'text-red-700',
+                    bgColor: 'bg-red-50'
+                };
+            }
+        }
+
+        async function scoreTranscript() {
+            const transcript = document.getElementById('transcriptInput').value.trim();
+            const scoreButton = document.getElementById('scoreButton');
+            const resultsDiv = document.getElementById('results');
+            const criterionResultsDiv = document.getElementById('criterionResults');
+            const errorDiv = document.getElementById('error-message');
+            const errorText = document.getElementById('error-text');
+
+            // --- 1. Reset UI State ---
+            resultsDiv.classList.add('hidden', 'opacity-0', 'translate-y-4');
+            errorDiv.classList.add('hidden');
+            errorText.textContent = '';
+            criterionResultsDiv.innerHTML = ''; 
+            document.getElementById('overallScore').textContent = '--';
+            document.getElementById('scoreProgressBar').style.width = '0%';
+            document.getElementById('scoreGrade').textContent = '';
+            document.getElementById('scoreGrade').className = 'text-xl font-bold px-4 py-2 rounded-full'; // Clear styles
+
+            if (!transcript || transcript.split(/\s+/).length < 5) {
+                errorText.textContent = "Transcript is too short. Please provide a valid script with at least 5 words.";
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+
+            // --- 2. Show Loading State ---
+            const originalButtonContent = scoreButton.innerHTML;
+            scoreButton.disabled = true;
+            scoreButton.innerHTML = `
+                <span class="font-bold">Analyzing...</span>
+                <div class="ml-4 flex items-center">
+                    <span class="loading-dot"></span>
+                    <span class="loading-dot"></span>
+                    <span class="loading-dot"></span>
+                </div>
+            `;
+
+            try {
+                // --- 3. API Call with Exponential Backoff ---
+                const maxRetries = 3;
+                let attempt = 0;
+                let data = null;
+
+                while (attempt < maxRetries) {
+                    try {
+                        const url = `${BASE_URL}/score`;
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ transcript: transcript })
+                        });
+
+                        if (!response.ok) {
+                            const errorJson = await response.json().catch(() => null);
+                            if (errorJson && errorJson.error) {
+                                throw new Error(`[Server Validation Error] ${errorJson.error}`);
+                            }
+                            throw new Error(`Server returned status ${response.status}.`);
+                        }
+                        
+                        data = await response.json();
+                        break; // Success, exit loop
+
+                    } catch (error) {
+                        attempt++;
+                        if (attempt >= maxRetries) {
+                            throw error; // Last attempt failed
+                        }
+                        // Exponential backoff: 2^attempt seconds (2s, 4s, ...)
+                        const delay = Math.pow(2, attempt) * 1000;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        // console.log(`Retrying attempt ${attempt}...`); // Internal log, not shown to user
+                    }
+                }
+
+                if (data) {
+                    displayResults(data);
+                }
+
+            } catch (error) {
+                // --- 4. Handle Errors ---
+                console.error('Scoring Error:', error);
+                
+                let userFriendlyError = `Analysis failed. This is usually caused by:
+                <ul class="list-disc ml-5 mt-2 space-y-1">
+                    <li>The Python server (app.py) is not currently running.</li>
+                    <li>The Flask server encountered an internal error (check terminal logs for stack trace).</li>
+                    <li>Network connection issues.</li>
+                </ul>`;
+
+                if (error.message.includes('[Server Validation Error]')) {
+                    userFriendlyError = error.message.replace('[Server Validation Error] ', '');
+                } else if (error.message.includes('Server returned status 404')) {
+                    userFriendlyError = `Routing Error (404): The Flask server is running but the '/score' API endpoint could not be found. Please verify your 'app.py' route definitions.`;
+                } else if (error.message.includes('Failed to fetch')) {
+                    userFriendlyError = `Network Error: Could not connect to the Flask server. Please ensure you have run 'python app.py' in your terminal and that the server is running.`;
+                } else {
+                    userFriendlyError = `An unexpected error occurred: ${error.message}. Please check your terminal logs.`;
+                }
+
+                errorText.innerHTML = userFriendlyError;
+                errorDiv.classList.remove('hidden');
+            } finally {
+                // --- 5. Restore Button State ---
+                scoreButton.disabled = false;
+                scoreButton.innerHTML = originalButtonContent;
+            }
+        }
+
+        function displayResults(data) {
+            const overallScore = data.overall_score;
+            document.getElementById('wordCount').textContent = data.word_count;
+            
+            const overallStatus = getScoreStatus(overallScore);
+            document.getElementById('overallScore').textContent = overallScore;
+            
+            const scoreGradeElement = document.getElementById('scoreGrade');
+            scoreGradeElement.textContent = overallStatus.grade;
+            // Set dynamic colors for the overall grade badge
+            scoreGradeElement.className = `text-xl font-bold px-4 py-2 rounded-full ${overallStatus.colorClass} text-white shadow-lg`;
+
+            // Animate Progress Bar
+            const progressBar = document.getElementById('scoreProgressBar');
+            progressBar.style.width = `${overallScore}%`;
+            progressBar.className = `progress-bar ${overallStatus.colorClass}`;
+
+            const criterionResultsDiv = document.getElementById('criterionResults');
+            criterionResultsDiv.innerHTML = ''; // Clear previous results
+
+            data.per_criterion.forEach(criterion => {
+                const status = getScoreStatus(criterion.score);
+                
+                const resultHtml = `
+                    <div class="p-6 ${status.bgColor} border-l-4 ${status.borderClass} rounded-xl shadow-lg transition duration-300 hover:shadow-xl">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <h4 class="font-bold text-lg text-gray-800">${criterion.name}</h4>
+                                <p class="text-xs text-gray-500">Weighted to: ${criterion.weight}/${data.total_possible_weight}</p>
+                            </div>
+                            <span class="px-3 py-1 text-2xl font-extrabold rounded-lg ${status.textColor} bg-white shadow-md flex-shrink-0">
+                                ${criterion.score}<span class="text-sm font-semibold">/100</span>
+                            </span>
+                        </div>
+                        <p class="text-sm text-gray-600 border-t border-gray-200 pt-3 mt-3">
+                            <span class="font-semibold text-gray-700">Detailed Feedback:</span> ${criterion.feedback}
+                        </p>
+                    </div>
+                `;
+                criterionResultsDiv.insertAdjacentHTML('beforeend', resultHtml);
+            });
+
+            // Make results visible with a slight animation
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.classList.remove('hidden');
+            setTimeout(() => {
+                resultsDiv.classList.remove('opacity-0', 'translate-y-4');
+            }, 50);
+        }
+    </script>
+</body>
+</html>
